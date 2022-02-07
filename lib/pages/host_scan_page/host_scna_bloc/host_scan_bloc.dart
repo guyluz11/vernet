@@ -48,9 +48,11 @@ class HostScanBloc extends Bloc<HostScanEvent, HostScanState> {
     StartNewScan event,
     Emitter<HostScanState> emit,
   ) async {
-    const int scanRangeForIsolate = 10;
+    const int scanRangeForIsolate = 65;
 
-    for (int i = appSettings.firstSubnet; i <= 100; i += scanRangeForIsolate) {
+    for (int i = appSettings.firstSubnet;
+        i <= appSettings.lastSubnet;
+        i += scanRangeForIsolate) {
       final IsolateContactor isolateContactor =
           await IsolateContactor.createOwnIsolate(startSearchingDevices);
 
@@ -59,7 +61,8 @@ class HostScanBloc extends Bloc<HostScanEvent, HostScanState> {
         i.toString(),
         (i + scanRangeForIsolate).toString(),
       ]);
-      await for (final dynamic message in isolateContactor.onMessage) {
+
+      isolateContactor.onMessage.listen((message) {
         try {
           if (message is ActiveHost) {
             final DeviceInTheNetwork tempDeviceInTheNetwork =
@@ -85,7 +88,7 @@ class HostScanBloc extends Bloc<HostScanEvent, HostScanState> {
         } catch (e) {
           emit(const HostScanState.error());
         }
-      }
+      });
     }
     print('The end of the scan');
 
