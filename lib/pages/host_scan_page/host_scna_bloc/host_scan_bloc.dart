@@ -50,6 +50,8 @@ class HostScanBloc extends Bloc<HostScanEvent, HostScanState> {
   ) async {
     const int scanRangeForIsolate = 65;
 
+    final StreamController<DeviceInTheNetwork> scanChanges = StreamController();
+
     for (int i = appSettings.firstSubnet;
         i <= appSettings.lastSubnet;
         i += scanRangeForIsolate) {
@@ -71,17 +73,7 @@ class HostScanBloc extends Bloc<HostScanEvent, HostScanState> {
               currentDeviceIp: ip!,
               gatewayIp: gatewayIp!,
             );
-
-            activeHostList.add(tempDeviceInTheNetwork);
-            activeHostList.sort((a, b) {
-              final int aIp =
-                  int.parse(a.ip.substring(a.ip.lastIndexOf('.') + 1));
-              final int bIp =
-                  int.parse(b.ip.substring(b.ip.lastIndexOf('.') + 1));
-              return aIp.compareTo(bIp);
-            });
-            emit(const HostScanState.loadInProgress());
-            emit(HostScanState.foundNewDevice(activeHostList));
+            scanChanges.add(tempDeviceInTheNetwork);
           } else if (message is String && message == 'Done') {
             isolateContactor.dispose();
           }
@@ -89,6 +81,17 @@ class HostScanBloc extends Bloc<HostScanEvent, HostScanState> {
           emit(const HostScanState.error());
         }
       });
+    }
+    await for (final DeviceInTheNetwork deviceInTheNetwork
+        in scanChanges.stream) {
+      activeHostList.add(deviceInTheNetwork);
+      activeHostList.sort((a, b) {
+        final int aIp = int.parse(a.ip.substring(a.ip.lastIndexOf('.') + 1));
+        final int bIp = int.parse(b.ip.substring(b.ip.lastIndexOf('.') + 1));
+        return aIp.compareTo(bIp);
+      });
+      emit(const HostScanState.loadInProgress());
+      emit(HostScanState.foundNewDevice(activeHostList));
     }
     print('The end of the scan');
 
